@@ -1,0 +1,121 @@
+---
+swagger: "2.0"
+info:
+  x-ibm-name: "wikipedia"
+  title: "Wikipedia"
+  version: "1.0.0"
+schemes:
+- "https"
+host: "$(catalog.host)"
+basePath: "/wikipedia"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+securityDefinitions:
+  clientIdHeader:
+    type: "apiKey"
+    in: "header"
+    name: "X-IBM-Client-Id"
+security:
+- clientIdHeader: []
+x-ibm-configuration:
+  testable: true
+  enforced: true
+  cors:
+    enabled: true
+  assembly:
+    execute:
+    - invoke:
+        target-url: "https://es.wikipedia.org/w/api.php?action=query&format=json&list=search&utf8=1&srsearch={city}&srlimit=1"
+        title: "wsearch_title"
+        output: "wsearch_response"
+        verb: "GET"
+        cache-response: "no-cache"
+    - gatewayscript:
+        title: "map title"
+        source: "\r\nvar wiki_resp = apim.getvariable('wsearch_response.body');\r\n\
+          var title = wiki_resp.query.search[0].title;\r\nvar snippet = wiki_resp.query.search[0].snippet;\r\
+          \n\r\napim.setvariable('wsearch_title', title);\r\n\r\n"
+    - invoke:
+        title: "wsearch_url"
+        timeout: 60
+        verb: "GET"
+        cache-response: "protocol"
+        cache-ttl: 900
+        target-url: "https://es.wikipedia.org/w/api.php?action=query&format=json&prop=info&indexpageids=1&titles=$(wsearch_title)&inprop=url"
+        stop-on-error: []
+        output: "wsearchu_response"
+    - gatewayscript:
+        title: "map url"
+        source: "var wiki_resp = apim.getvariable('wsearchu_response.body');\nvar\
+          \ pageid = wiki_resp.query.pageids[0];\nvar wikiurl = wiki_resp.query.pages[pageid].fullurl;\n\
+          \napim.setvariable('wsearch_url', wikiurl);\n\n"
+    - invoke:
+        title: "wsearch_content"
+        timeout: 60
+        verb: "GET"
+        cache-response: "protocol"
+        cache-ttl: 900
+        target-url: "https://es.wikipedia.org/w/api.php?action=query&format=json&prop=extracts&indexpageids=1&titles=$(wsearch_title)"
+        output: "wcontent_response"
+        stop-on-error: []
+    - gatewayscript:
+        title: "map content"
+        source: "var wiki_resp = apim.getvariable('wcontent_response.body');\nvar\
+          \ pageid = wiki_resp.query.pageids[0];\nvar extract = wiki_resp.query.pages[pageid].extract.substring(0,300);\n\
+          \napim.setvariable('wsearch_extract', extract);"
+    - map:
+        title: "map"
+        inputs:
+          title:
+            schema:
+              type: "string"
+            variable: "wsearch_title"
+          extract:
+            schema:
+              type: "string"
+            variable: "wsearch_extract"
+          url:
+            schema:
+              type: "string"
+            variable: "wsearch_url"
+        outputs:
+          output:
+            schema:
+              $schema: "http://json-schema.org/draft-04/schema#"
+              description: ""
+              type: "object"
+              properties:
+                title:
+                  type: "string"
+                description:
+                  type: "string"
+                url:
+                  type: "string"
+              example: "{\n    \"title\": \"title\",\n    \"description\": \"description\"\
+                ,\n    \"url\": \"https://\"\n}"
+            variable: "message.body"
+            content: "application/json"
+        actions:
+        - set: "output.title"
+          from: "title"
+        - set: "output.description"
+          from: "extract"
+        - set: "output.url"
+          from: "url"
+  phase: "realized"
+paths:
+  /Demographics:
+    get:
+      responses:
+        200:
+          description: "200 OK"
+    parameters:
+    - name: "city"
+      type: "string"
+      required: true
+      in: "query"
+      description: "city or state"
+definitions: {}
+tags: []

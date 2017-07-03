@@ -1,0 +1,264 @@
+---
+swagger: "2.0"
+info:
+  x-ibm-name: "weather"
+  title: "Weather"
+  version: "1.0.0"
+schemes:
+- "https"
+host: "$(catalog.host)"
+basePath: "/weather"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+securityDefinitions:
+  clientIdHeader:
+    type: "apiKey"
+    in: "header"
+    name: "X-IBM-Client-Id"
+security:
+- clientIdHeader: []
+x-ibm-configuration:
+  testable: true
+  enforced: true
+  cors:
+    enabled: true
+  assembly:
+    execute:
+    - invoke:
+        target-url: "https://maps.googleapis.com/maps/api/geocode/json?address={city}"
+        title: "get geocode"
+        verb: "GET"
+        cache-response: "protocol"
+        output: "geocode_response"
+    - gatewayscript:
+        title: "gatewayscript"
+        source: "\r\nvar map = apim.getvariable('geocode_response.body');\r\nvar location\
+          \ = map.results[0].geometry.location;\r\n\r\nvar respObj = {\r\n    \"google_maps_link\"\
+          : \"https://www.google.com/maps?q=\" + location.lat + \",\" + location.lng\r\
+          \n};\r\n\r\napim.setvariable('geocode_parsed_lat', location.lat);\r\napim.setvariable('geocode_parsed_lng',\
+          \ location.lng);"
+    - map:
+        title: "location map"
+        inputs:
+          lng:
+            schema:
+              type: "string"
+            variable: "geocode_parsed_lng"
+          lat:
+            schema:
+              type: "string"
+            variable: "geocode_parsed_lat"
+        outputs:
+          lat:
+            schema:
+              type: "string"
+            variable: "map_response_lat"
+          lng:
+            schema:
+              type: "string"
+            variable: "map_response_lng"
+        actions:
+        - set: "lng"
+          from: "lng"
+        - set: "lat"
+          from: "lat"
+    - invoke:
+        title: "Weather"
+        timeout: 60
+        verb: "GET"
+        cache-response: "no-cache"
+        cache-ttl: 900
+        target-url: "https://twcservice.mybluemix.net/api/weather/v1/geocode/$(map_response_lat)/$(map_response_lng)/observations.json?language=es-MX&units=m"
+        output: "weather_response"
+        username: "cbb5b08a-fb15-48a9-a4b8-3463aedb5010"
+        password: "tpcx7fvZOz"
+        stop-on-error: []
+    - map:
+        title: "map"
+        inputs:
+          input:
+            schema:
+              $schema: "http://json-schema.org/draft-04/schema#"
+              description: ""
+              type: "object"
+              properties:
+                metadata:
+                  type: "object"
+                  properties:
+                    language:
+                      type: "string"
+                    transaction_id:
+                      type: "string"
+                    version:
+                      type: "string"
+                    latitude:
+                      type: "number"
+                    longitude:
+                      type: "number"
+                    units:
+                      type: "string"
+                    expire_time_gmt:
+                      type: "number"
+                    status_code:
+                      type: "number"
+                observation:
+                  type: "object"
+                  properties:
+                    key:
+                      type: "string"
+                    class:
+                      type: "string"
+                    expire_time_gmt:
+                      type: "number"
+                    obs_id:
+                      type: "string"
+                    obs_name:
+                      type: "string"
+                    valid_time_gmt:
+                      type: "number"
+                    day_ind:
+                      type: "string"
+                    temp:
+                      type: "number"
+                    wx_icon:
+                      type: "number"
+                    icon_extd:
+                      type: "number"
+                    wx_phrase:
+                      type: "string"
+                    pressure_tend:
+                      type: "number"
+                    pressure_desc:
+                      type: "string"
+                    dewPt:
+                      type: "number"
+                    heat_index:
+                      type: "number"
+                    rh:
+                      type: "number"
+                    pressure:
+                      type: "number"
+                    vis:
+                      type: "number"
+                    wc:
+                      type: "number"
+                    wdir:
+                      type: "number"
+                    wdir_cardinal:
+                      type: "string"
+                    gust: {}
+                    wspd:
+                      type: "number"
+                    max_temp:
+                      type: "number"
+                    min_temp:
+                      type: "number"
+                    precip_total:
+                      type: "number"
+                    precip_hrly: {}
+                    snow_hrly: {}
+                    uv_desc:
+                      type: "string"
+                    feels_like:
+                      type: "number"
+                    uv_index:
+                      type: "number"
+                    qualifier: {}
+                    qualifier_svrty: {}
+                    blunt_phrase: {}
+                    terse_phrase: {}
+                    clds:
+                      type: "number"
+                    water_temp: {}
+                    primary_wave_period: {}
+                    primary_wave_height: {}
+                    primary_swell_period: {}
+                    primary_swell_height: {}
+                    primary_swell_direction: {}
+                    secondary_swell_period: {}
+                    secondary_swell_height: {}
+                    secondary_swell_direction: {}
+              example: "{\r\n  \"metadata\": {\r\n    \"language\": \"es-MX\",\r\n\
+                \    \"transaction_id\": \"1480552427238:-420687105\",\r\n    \"version\"\
+                : \"1\",\r\n    \"latitude\": 19.43,\r\n    \"longitude\": -99.13,\r\
+                \n    \"units\": \"m\",\r\n    \"expire_time_gmt\": 1480562100,\r\n\
+                \    \"status_code\": 200\r\n  },\r\n  \"observation\": {\r\n    \"\
+                key\": \"76680\",\r\n    \"class\": \"observation\",\r\n    \"expire_time_gmt\"\
+                : 1480562100,\r\n    \"obs_id\": \"76680\",\r\n    \"obs_name\": \"\
+                Mexico City\",\r\n    \"valid_time_gmt\": 1480550400,\r\n    \"day_ind\"\
+                : \"N\",\r\n    \"temp\": 23,\r\n    \"wx_icon\": 29,\r\n    \"icon_extd\"\
+                : 2900,\r\n    \"wx_phrase\": \"Parcialmente nublado\",\r\n    \"\
+                pressure_tend\": 0,\r\n    \"pressure_desc\": \"Estable\",\r\n   \
+                \ \"dewPt\": 12,\r\n    \"heat_index\": 23,\r\n    \"rh\": 52,\r\n\
+                \    \"pressure\": 772.7,\r\n    \"vis\": 6,\r\n    \"wc\": 23,\r\n\
+                \    \"wdir\": 190,\r\n    \"wdir_cardinal\": \"S\",\r\n    \"gust\"\
+                : null,\r\n    \"wspd\": 7,\r\n    \"max_temp\": 26,\r\n    \"min_temp\"\
+                : 11,\r\n    \"precip_total\": 0,\r\n    \"precip_hrly\": null,\r\n\
+                \    \"snow_hrly\": null,\r\n    \"uv_desc\": \"Bajo\",\r\n    \"\
+                feels_like\": 23,\r\n    \"uv_index\": 0,\r\n    \"qualifier\": null,\r\
+                \n    \"qualifier_svrty\": null,\r\n    \"blunt_phrase\": null,\r\n\
+                \    \"terse_phrase\": null,\r\n    \"clds\": 62.5,\r\n    \"water_temp\"\
+                : null,\r\n    \"primary_wave_period\": null,\r\n    \"primary_wave_height\"\
+                : null,\r\n    \"primary_swell_period\": null,\r\n    \"primary_swell_height\"\
+                : null,\r\n    \"primary_swell_direction\": null,\r\n    \"secondary_swell_period\"\
+                : null,\r\n    \"secondary_swell_height\": null,\r\n    \"secondary_swell_direction\"\
+                : null\r\n  }\r\n}"
+            variable: "weather_response.body"
+            content: "application/json"
+          lat:
+            schema:
+              type: "string"
+            variable: "geocode_parsed_lat"
+          lng:
+            schema:
+              type: "string"
+            variable: "geocode_parsed_lng"
+        outputs:
+          response:
+            schema:
+              $schema: "http://json-schema.org/draft-04/schema#"
+              description: ""
+              type: "object"
+              properties:
+                temperature:
+                  type: "number"
+                max:
+                  type: "number"
+                min:
+                  type: "number"
+                latitude:
+                  type: "number"
+                longitude:
+                  type: "number"
+              example: "{\r\n    \"temperature\": 0,\r\n    \"max\": 0,\r\n    \"\
+                min\": 0,\r\n    \"latitude\": 0,\r\n    \"longitude\": 0\r\n}"
+            variable: "message.body"
+            content: "application/json"
+        actions:
+        - set: "response.temperature"
+          from: "input.observation.temp"
+        - set: "response.max"
+          from: "input.observation.max_temp"
+        - set: "response.min"
+          from: "input.observation.min_temp"
+        - set: "response.latitude"
+          from: "lat"
+        - set: "response.longitude"
+          from: "lng"
+    catch: []
+  phase: "realized"
+paths:
+  /today:
+    get:
+      responses:
+        200:
+          description: "200 OK"
+    parameters:
+    - name: "city"
+      type: "string"
+      required: true
+      in: "query"
+definitions: {}
+tags: []

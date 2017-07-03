@@ -1,0 +1,54 @@
+---
+swagger: "2.0"
+info:
+  x-ibm-name: "gmap"
+  title: "Gmap"
+  version: "1.0.0"
+schemes:
+- "https"
+host: "$(catalog.host)"
+basePath: "/gmap"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+securityDefinitions:
+  clientIdHeader:
+    type: "apiKey"
+    in: "header"
+    name: "X-IBM-Client-Id"
+security:
+- clientIdHeader: []
+x-ibm-configuration:
+  testable: true
+  enforced: true
+  cors:
+    enabled: true
+  assembly:
+    execute:
+    - invoke:
+        target-url: "https://maps.googleapis.com/maps/api/geocode/json?address={city}"
+        title: "geocode"
+        verb: "GET"
+        cache-response: "protocol"
+        output: "geocode_response"
+    - gatewayscript:
+        title: "gatewayscript"
+        source: "var map = apim.getvariable('geocode_response.body');\nvar location\
+          \ = map.results[0].geometry.location;\n\nvar response_loc = {\n    \"lat\"\
+          : location.lat,\n    \"lng\": location.lng\n}\n\napim.setvariable('message.body',\
+          \ response_loc);"
+  phase: "realized"
+paths:
+  /getmap:
+    get:
+      responses:
+        200:
+          description: "200 OK"
+    parameters:
+    - name: "city"
+      type: "string"
+      required: true
+      in: "query"
+definitions: {}
+tags: []
