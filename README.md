@@ -1,6 +1,6 @@
-# Node.js Hello World Sample
+# Java Chatbot
 
-This application demonstrates a simple, reusable Node.js chatbot web application based on the Express framework.
+This application demonstrates a simple, reusable Java chatbot web application
 
 ## Configure watson conversation service
 1. Import Watson conversation workspace (found at _watson folder)
